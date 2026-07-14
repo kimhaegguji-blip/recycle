@@ -2,415 +2,257 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>에코 캐치! 재활용 분류 게임</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2D 미니 배드민턴 (승리 세리머니 + 서브 + 다양한 샷)</title>
     <style>
-        /* 화면 중앙 정렬 및 친환경 테마 스타일링 */
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #e8f5e9;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
-        }
-
-        h1 {
-            color: #2e7d32;
-            margin-bottom: 10px;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-        }
-
-        #gameContainer {
-            position: relative;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-            border-radius: 15px;
-            overflow: hidden;
-            background-color: #ffffff;
-        }
-
-        canvas {
-            display: block;
-            background: linear-gradient(to bottom, #e3f2fd, #ffffff);
-        }
-
-        /* 게임 오버 및 클리어 화면 오버레이 */
-        .overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-            z-index: 10;
-        }
-
-        .overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .overlay h2 {
-            font-size: 2.5rem;
-            margin-bottom: 15px;
-        }
-
-        .overlay p {
-            font-size: 1.2rem;
-            margin-bottom: 25px;
-            text-align: center;
-            line-height: 1.6;
-        }
-
-        .btn {
-            padding: 12px 30px;
-            font-size: 1.1rem;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: transform 0.1s, background-color 0.2s;
-        }
-
-        .btn:active {
-            transform: scale(0.95);
-        }
-
-        .btn-start {
-            background-color: #4caf50;
-            color: white;
-        }
-
-        .btn-start:hover {
-            background-color: #45a049;
-        }
-
-        /* 하단 조작 안내 */
-        .instructions {
-            margin-top: 15px;
-            color: #555;
-            font-size: 0.9rem;
-            text-align: center;
-        }
+        body { margin: 0; padding: 0; background-color: #f0f0f0; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Arial', sans-serif; }
+        #gameCanvas { background: linear-gradient(to bottom, #87CEEB, #E0F7FA); border: 2px solid #333; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        #mobileControls { position: absolute; bottom: 10px; width: 100%; display: flex; justify-content: space-between; padding: 0 10px; box-sizing: border-box; pointer-events: none; }
+        .controlBtn { width: 60px; height: 60px; background-color: rgba(255, 255, 255, 0.7); border: 2px solid #555; border-radius: 50%; font-size: 24px; pointer-events: auto; user-select: none; }
+        .controlBtn:active { background-color: rgba(255, 255, 255, 1); }
+        #uiOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; align-items: center; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        #restartBtn { position: absolute; top: 10px; right: 10px; background-color: #FF5722; color: white; border: none; padding: 10px 20px; font-size: 16px; pointer-events: auto; display: none; }
     </style>
 </head>
 <body>
-
-    <h1>♻️ 에코 캐치 (Eco Catch)</h1>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
     
-    <div id="gameContainer">
-        <canvas id="gameCanvas" width="600" height="500"></canvas>
-        
-        <div id="gameOverlay" class="overlay active">
-            <h2 id="overlayTitle">에코 캐치 시작하기</h2>
-            <p id="overlayText">마우스나 좌우 방향키로 바구니를 움직여<br>지정된 재활용 쓰레기를 안전하게 받아내세요!</p>
-            <button id="overlayBtn" class="btn btn-start">게임 시작</button>
+    <div id="uiOverlay">
+        <div style="font-size: 24px; font-weight: bold; margin-top: 10px;">2D BADMINTON CHALLENGE</div>
+        <div id="scoreDisplay" style="font-size: 32px; font-weight: bold; margin-top: 10px;">PLAYER A: [0] | PLAYER B: [0]</div>
+        <div id="winnerDisplay" style="font-size: 48px; font-weight: bold; margin-top: 60px; display: none; color: gold;">PLAYER A WINS!</div>
+    </div>
+    <button id="restartBtn" onclick="initGame()">RESTART</button>
+
+    <div id="mobileControls">
+        <div style="display: flex; gap: 10px;">
+            <button class="controlBtn" id="btnLeft">←</button>
+            <button class="controlBtn" id="btnUp">↑</button>
+            <button class="controlBtn" id="btnRight">→</button>
         </div>
+        <button class="controlBtn" style="font-weight: bold; color: red;" id="btnHit">HIT</button>
     </div>
 
-    <div class="instructions">
-        좌우 방향키(◀ ▶) 또는 마우스를 움직여 바구니를 조작하세요.<br>
-        <strong>목표 점수: 100점</strong>을 달성하면 다음 스테이지로 넘어갑니다!
-    </div>
+<script>
+    // --- constants & Setup ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const winnerDisplay = document.getElementById('winnerDisplay');
+    const restartBtn = document.getElementById('restartBtn');
+    
+    const cw = canvas.width;
+    const ch = canvas.height;
+    const floorY = ch - 50;
+    const netX = cw / 2;
+    const gravity = 0.4;
+    const playerSpeed = 5;
+    const playerJumpForce = -10;
+    const drag = 0.99; // Air resistance for shuttlecock
+    
+    // --- Audio setup (Web Audio API - no external files needed) ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playHitSound() {
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        const types = ['ting', 'tong', 'phoosh'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        let freq, duration;
+        if (type === 'ting') { freq = 2000; duration = 0.05; }
+        else if (type === 'tong') { freq = 800; duration = 0.08; }
+        else { freq = 400; duration = 0.15; }
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + duration);
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+    }
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const overlay = document.getElementById('gameOverlay');
-        const overlayTitle = document.getElementById('overlayTitle');
-        const overlayText = document.getElementById('overlayText');
-        const overlayBtn = document.getElementById('overlayBtn');
-
-        // 게임 상태 관리
-        let gameState = 'START'; // START, PLAYING, STAGE_CLEAR, GAME_OVER, ALL_CLEAR
-        let score = 0;
-        let lives = 3;
-        let timeLeft = 60;
-        let lastTime = 0;
-        let timerInterval;
-        let currentStage = 1;
-
-        const TARGET_SCORE = 100; // 스테이지 클리어 기준 점수
-
-        // 스테이지 정보 정의
-        const STAGE_INFO = {
-            1: {
-                name: "1단계: 플라스틱 분류",
-                targetType: "plastic",
-                basketColor: "#2196f3",
-                basketLabel: "플라스틱 수거함 🍼"
-            },
-            2: {
-                name: "2단계: 종이 분류",
-                targetType: "paper",
-                basketColor: "#4caf50",
-                basketLabel: "종이 수거함 📦"
-            },
-            3: {
-                name: "3단계: 캔/고철 분류",
-                targetType: "can",
-                basketColor: "#ff9800",
-                basketLabel: "캔/고철 수거함 🥫"
-            }
-        };
-
-        // 떨어지는 쓰레기 종류 정의 (이모지 및 분류 유형)
-        const TRASH_TYPES = [
-            { emoji: "🍼", name: "페트병", type: "plastic" },
-            { emoji: "🥤", name: "일회용 컵", type: "plastic" },
-            { emoji: "📦", name: "택배 상자", type: "paper" },
-            { emoji: "📰", name: "신문지", type: "paper" },
-            { emoji: "🥫", name: "음료수 캔", type: "can" },
-            { emoji: "🍳", name: "고철 프라이팬", type: "can" },
-            { emoji: "🍏", name: "음식물 쓰레기", type: "waste" },
-            { emoji: "🩹", name: "일반 쓰레기", type: "waste" }
-        ];
-
-        // 바구니 객체
-        const basket = {
-            x: canvas.width / 2 - 60,
-            y: canvas.height - 40,
-            width: 120,
-            height: 25,
-            speed: 8
-        };
-
-        // 떨어지는 아이템 배열
-        let items = [];
-        let spawnTimer = 0;
-        const spawnInterval = 1000; // 1초마다 생성
-
-        // 키 조작 상태
-        const keys = {
-            ArrowLeft: false,
-            ArrowRight: false
-        };
-
-        // 이벤트 리스너 등록
-        window.addEventListener('keydown', (e) => { if (e.key in keys) keys[e.key] = true; });
-        window.addEventListener('keyup', (e) => { if (e.key in keys) keys[e.key] = false; });
-        
-        // 마우스 조작 추가
-        canvas.addEventListener('mousemove', (e) => {
-            if (gameState !== 'PLAYING') return;
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            basket.x = mouseX - basket.width / 2;
-            
-            // 경계 밖 나가지 않게 처리
-            if (basket.x < 0) basket.x = 0;
-            if (basket.x > canvas.width - basket.width) basket.x = canvas.width - basket.width;
-        });
-
-        overlayBtn.addEventListener('click', handleButtonClick);
-
-        // 버튼 클릭 이벤트 분기
-        function handleButtonClick() {
-            if (gameState === 'START' || gameState === 'GAME_OVER' || gameState === 'ALL_CLEAR') {
-                currentStage = 1;
-                startGame();
-            } else if (gameState === 'STAGE_CLEAR') {
-                currentStage++;
-                startGame();
+    // --- Object Classes ---
+    class Player {
+        constructor(x, y, color) {
+            this.pos = { x: x, y: y };
+            this.vel = { x: 0, y: 0 };
+            this.w = 30; this.h = 60;
+            this.color = color;
+            this.score = 0;
+            this.holdingBall = false; // Is this player holding for serve?
+        }
+        draw() {
+            ctx.fillStyle = this.color; ctx.fillRect(this.pos.x, this.pos.y, this.w, this.h);
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+            const raquetX = this.color === 'red' ? this.pos.x + this.w + 5 : this.pos.x - 20;
+            const raquetY = this.pos.y + 15;
+            ctx.beginPath(); ctx.arc(raquetX, raquetY, 15, 0, Math.PI * 2); ctx.stroke();
+            ctx.moveTo(raquetX, raquetY + 15); ctx.lineTo(raquetX, raquetY + 30); ctx.stroke();
+        }
+        update() {
+            this.vel.y += gravity;
+            this.pos.x += this.vel.x;
+            this.pos.y += this.vel.y;
+            if (this.pos.y + this.h > floorY) { this.pos.y = floorY - this.h; this.vel.y = 0; }
+            if (this.color === 'red') {
+                if (this.pos.x < 0) this.pos.x = 0;
+                if (this.pos.x + this.w > netX - 5) this.pos.x = netX - this.w - 5;
+            } else { // Blue (AI)
+                if (this.pos.x < netX + 5) this.pos.x = netX + 5;
+                if (this.pos.x + this.w > cw) this.pos.x = cw - this.w;
             }
         }
+    }
 
-        // 게임 시작 및 스테이지 전환 초기화
-        function startGame() {
-            gameState = 'PLAYING';
-            score = 0;
-            lives = 3;
-            timeLeft = 60;
-            items = [];
-            spawnTimer = 0;
-            overlay.classList.remove('active');
-
-            // 타이머 작동
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                if (gameState === 'PLAYING') {
-                    timeLeft--;
-                    if (timeLeft <= 0) {
-                        endGame(false); // 시간 초과 시 패배
-                    }
-                }
-            }, 1000);
-
-            requestAnimationFrame(gameLoop);
+    class Shuttlecock {
+        constructor() { this.reset(); }
+        reset() {
+            this.pos = { x: cw * 0.25, y: floorY - 90 }; this.vel = { x: 0, y: 0 };
+            this.w = 10; this.h = 10; this.inPlay = false; this.held = true;
         }
-
-        // 아이템 생성 함수
-        function spawnItem() {
-            const randomType = TRASH_TYPES[Math.floor(Math.random() * TRASH_TYPES.length)];
-            items.push({
-                x: Math.random() * (canvas.width - 40) + 10,
-                y: -30,
-                width: 30,
-                height: 30,
-                emoji: randomType.emoji,
-                type: randomType.type,
-                name: randomType.name,
-                speed: Math.random() * 2 + 2 // 속도 2 ~ 4 사이 무작위
-            });
+        draw() {
+            ctx.fillStyle = '#fff'; ctx.fillRect(this.pos.x, this.pos.y, this.w, this.h);
+            ctx.beginPath(); ctx.arc(this.pos.x + this.w/2, this.pos.y + this.h, 5, 0, Math.PI); ctx.fill();
         }
-
-        // 업데이트 처리
-        function update() {
-            // 바구니 이동 (키보드 조작)
-            if (keys.ArrowLeft && basket.x > 0) {
-                basket.x -= basket.speed;
-            }
-            if (keys.ArrowRight && basket.x < canvas.width - basket.width) {
-                basket.x += basket.speed;
-            }
-
-            // 아이템 생성 관리
-            spawnTimer += 16.6; // 대략 60fps 기준 ms 누적
-            if (spawnTimer >= spawnInterval) {
-                spawnItem();
-                spawnTimer = 0;
-            }
-
-            const currentTargetType = STAGE_INFO[currentStage].targetType;
-
-            // 아이템 위치 이동 및 충돌 체크
-            for (let i = items.length - 1; i >= 0; i--) {
-                const item = items[i];
-                item.y += item.speed;
-
-                // 바구니와의 충돌 체크 (AABB)
-                if (item.x + item.width > basket.x && 
-                    item.x < basket.x + basket.width && 
-                    item.y + item.height > basket.y && 
-                    item.y < basket.y + basket.height) {
-                    
-                    // 정답 아이템인 경우
-                    if (item.type === currentTargetType) {
-                        score += 10;
-                        if (score >= TARGET_SCORE) {
-                            endGame(true); // 목표치 달성 시 성공 처리
-                        }
-                    } else {
-                        // 오답 수거 시 목숨 감소
-                        lives--;
-                        if (lives <= 0) {
-                            endGame(false);
-                        }
-                    }
-                    items.splice(i, 1);
-                    continue;
-                }
-
-                // 바닥으로 떨어졌을 때 처리
-                if (item.y > canvas.height) {
-                    // 받아야 할 정답 아이템을 놓쳤다면 목숨 감소
-                    if (item.type === currentTargetType) {
-                        lives--;
-                        if (lives <= 0) {
-                            endGame(false);
-                        }
-                    }
-                    items.splice(i, 1);
-                }
-            }
+        update() {
+            if (!this.inPlay || this.held) return;
+            this.vel.y += gravity;
+            this.vel.x *= drag; // Apply drag
+            this.vel.y *= drag;
+            this.pos.x += this.vel.x; this.pos.y += this.vel.y;
         }
+    }
 
-        // 캔버스 그리기
-        function draw() {
-            // 캔버스 청소
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // --- 6 Variable Shot Dictionary ---
+    const shotTypes = {
+        'fast_smash': { vx: 22, vy: -4, label: 'Fast Smash' }, // Adjusted for PlayerA side
+        'slow_drop':  { vx: 8, vy: -3, label: 'Slow Drop' },
+        'low_drive': { vx: 15, vy: -1.5, label: 'Low Drive' },
+        'high_lob':  { vx: 9, vy: -16, label: 'High Lob' },
+        'long_clear': { vx: 16, vy: -11, label: 'Long Clear' },
+        'short_net': { vx: 6, vy: -5, label: 'Short Drop (Net)' }
+    };
 
-            const currentStageConfig = STAGE_INFO[currentStage];
+    function chooseRandomShot() {
+        const types = Object.keys(shotTypes);
+        return types[Math.floor(Math.random() * types.length)];
+    }
 
-            // 1. 바구니 그리기
-            ctx.fillStyle = currentStageConfig.basketColor;
-            ctx.beginPath();
-            ctx.roundRect(basket.x, basket.y, basket.width, basket.height, 10);
-            ctx.fill();
+    // --- Game Logic ---
+    let playerA, playerB, shuttlecock, keys = {}, gameState, winner;
+    
+    function initGame() {
+        playerA = new Player(50, floorY - 60, 'red');
+        playerB = new Player(cw - 80, floorY - 60, 'blue');
+        shuttlecock = new Shuttlecock();
+        scoreDisplay.textContent = 'PLAYER A: [0] | PLAYER B: [0]';
+        winnerDisplay.style.display = 'none';
+        restartBtn.style.display = 'none';
+        gameState = 'SERVING_A'; // Starting state
+        playerA.holdingBall = true;
+        shuttlecock.held = true;
+        shuttlecock.pos.x = playerA.pos.x + playerA.w + 10;
+        shuttlecock.pos.y = playerA.pos.y + 15;
+    }
 
-            // 바구니에 수거함 이름 텍스트 표시
-            ctx.fillStyle = "white";
-            ctx.font = "bold 12px sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText(currentStageConfig.basketLabel, basket.x + basket.width / 2, basket.y + 17);
+    function checkCollision() {
+        if (!shuttlecock.inPlay) return;
+        const distA = Math.hypot((shuttlecock.pos.x + 5) - (playerA.pos.x + playerA.w + 5), (shuttlecock.pos.y + 5) - (playerA.pos.y + 15));
+        if (distA < 25 && keys[' '] && gameState === 'PLAYING') { hit(playerA); }
+        const distB = Math.hypot((shuttlecock.pos.x + 5) - (playerB.pos.x - 20), (shuttlecock.pos.y + 5) - (playerB.pos.y + 15));
+        if (distB < 25 && gameState === 'PLAYING') { hit(playerB); }
+        // Net check
+        if (shuttlecock.pos.x > netX - 5 && shuttlecock.pos.x < netX + 5 && shuttlecock.pos.y > ch - 120 && gameState === 'PLAYING') scorePoint('B');
+        // Floor check
+        if (shuttlecock.pos.y + shuttlecock.h >= floorY && gameState === 'PLAYING') scorePoint(shuttlecock.pos.x < netX ? 'B' : 'A');
+        // Out of bounds check
+        if (shuttlecock.pos.x < 0 || shuttlecock.pos.x > cw) scorePoint(shuttlecock.pos.x < 0 ? 'B' : 'A');
+    }
 
-            // 2. 떨어지는 아이템(이모지) 그리기
-            ctx.textAlign = "center";
-            for (let item of items) {
-                ctx.font = "28px sans-serif";
-                ctx.fillText(item.emoji, item.x + 15, item.y + 25);
-            }
-
-            // 3. UI 그리기 (상단 상태바)
-            // 배경 반투명 상단바
-            ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-            ctx.fillRect(0, 0, canvas.width, 45);
-
-            // 텍스트 정보 표시
-            ctx.fillStyle = "#333";
-            ctx.textAlign = "left";
-            ctx.font = "bold 16px sans-serif";
-            
-            // 왼쪽: 현재 스테이지 이름
-            ctx.fillText(currentStageConfig.name, 15, 28);
-
-            // 오른쪽: 점수, 목숨, 시간 표시
-            ctx.textAlign = "right";
-            
-            // 목숨 이모지 변환
-            let lifeIcons = "❤️".repeat(lives) + "🖤".repeat(Math.max(0, 3 - lives));
-            ctx.fillText(`목표: ${TARGET_SCORE} | 내 점수: ${score} | 목숨: ${lifeIcons} | 남은 시간: ${timeLeft}초`, canvas.width - 15, 28);
+    function hit(player) {
+        shuttlecock.inPlay = true;
+        shuttlecock.held = false;
+        playHitSound();
+        const typeKey = chooseRandomShot();
+        const baseShot = shotTypes[typeKey];
+        if (player === playerA) {
+            shuttlecock.vel.x = baseShot.vx + (Math.random() - 0.5) * 2;
+            shuttlecock.vel.y = baseShot.vy + (Math.random() - 0.5) * 1.5;
+        } else { // PlayerB AI: flip velocity
+            shuttlecock.vel.x = -baseShot.vx + (Math.random() - 0.5) * 2;
+            shuttlecock.vel.y = baseShot.vy + (Math.random() - 0.5) * 1.5;
         }
+    }
 
-        // 메인 게임 루프
-        function gameLoop() {
-            if (gameState !== 'PLAYING') return;
-            
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
+    function serve() {
+        if (gameState !== 'SERVING_A') return;
+        gameState = 'PLAYING'; playerA.holdingBall = false;
+        shuttlecock.vel.x = 12; shuttlecock.vel.y = -6; // Basic serve trajectory
+        playHitSound();
+    }
 
-        // 게임 종료 및 전환 이벤트 처리
-        function endGame(isSuccess) {
-            clearInterval(timerInterval);
-            
-            if (isSuccess) {
-                if (currentStage < Object.keys(STAGE_INFO).length) {
-                    gameState = 'STAGE_CLEAR';
-                    overlayTitle.innerText = "🎉 스테이지 클리어!";
-                    overlayText.innerHTML = `정말 훌륭해요! 목표 점수 <strong>${TARGET_SCORE}점</strong>을 달성했습니다.<br><br>다음 단계로 넘어가 새로운 쓰레기를 분리배출해 보세요.`;
-                    overlayBtn.innerText = "다음 단계 시작";
-                    overlayBtn.className = "btn btn-start";
-                } else {
-                    gameState = 'ALL_CLEAR';
-                    overlayTitle.innerText = "🏆 환경 챔피언 달성!";
-                    overlayText.innerHTML = `모든 재활용 수거함을 완벽하게 채웠습니다!<br>지구가 당신 덕분에 조금 더 깨끗해졌어요 🌳<br><br>최종 점수: <strong>${score}점</strong>`;
-                    overlayBtn.innerText = "처음부터 다시 하기";
-                    overlayBtn.className = "btn btn-start";
-                }
-            } else {
-                gameState = 'GAME_OVER';
-                overlayTitle.innerText = "😢 게임 오버";
-                overlayText.innerHTML = `아쉽네요! 재활용 분리에 실패했습니다.<br>다시 도전하여 지구를 지켜주세요!<br><br>최종 도달 단계: <strong>${STAGE_INFO[currentStage].name}</strong>`;
-                overlayBtn.innerText = "다시 시도";
-                overlayBtn.className = "btn btn-start";
-            }
-            
-            overlay.classList.add('active');
-        }
-    </script>
+    function scorePoint(winnerChar) {
+        shuttlecock.inPlay = false; shuttlecock.vel = { x: 0, y: 0 };
+        if (winnerChar === 'A') playerA.score++; else playerB.score++;
+        scoreDisplay.textContent = `PLAYER A: [${playerA.score}] | PLAYER B: [${playerB.score}]`;
+        if (playerA.score >= 11 || playerB.score >= 11) { endGame(playerA.score >= 11 ? 'A' : 'B'); }
+        else { resetPositions(); }
+    }
+
+    function resetPositions() {
+        shuttlecock.reset(); playerA.pos = { x: 50, y: floorY - 60 }; playerB.pos = { x: cw - 80, y: floorY - 60 };
+        gameState = 'SERVING_A'; playerA.holdingBall = true; shuttlecock.held = true;
+        shuttlecock.pos.x = playerA.pos.x + playerA.w + 10; shuttlecock.pos.y = playerA.pos.y + 15;
+    }
+
+    function endGame(winnerChar) {
+        winner = winnerChar === 'A' ? playerA : playerB;
+        gameState = winnerChar === 'A' ? 'A_WINS' : 'B_WINS';
+        winnerDisplay.textContent = `PLAYER ${winnerChar} WINS!`; winnerDisplay.style.display = 'block'; restartBtn.style.display = 'block';
+    }
+
+    function runAI() {
+        if (gameState !== 'PLAYING') return;
+        const targetX = shuttlecock.pos.x; const targetDist = cw * 0.1;
+        if (playerB.pos.x < targetX - 5) playerB.vel.x = playerSpeed; else if (playerB.pos.x > targetX + targetDist) playerB.vel.x = -playerSpeed; else playerB.vel.x = 0;
+        if (shuttlecock.pos.y < playerB.pos.y - 10 && shuttlecock.pos.y > ch * 0.4) playerB.vel.y = playerJumpForce;
+    }
+
+    // --- Winning Celebration Animation ---
+    function celebrateWinner(winnerPlayer) {
+        const celebrationSpeed = 0.2; const jumpHeight = 60;
+        winnerPlayer.pos.y = floorY - winnerPlayer.h - Math.abs(jumpHeight * Math.sin(Date.now() * celebrationSpeed));
+    }
+
+    // --- Drawing ---
+    function draw() {
+        ctx.clearRect(0, 0, cw, ch);
+        ctx.fillStyle = '#8BC34A'; ctx.fillRect(0, floorY, cw, 50); ctx.fillStyle = '#fff'; ctx.fillRect(netX - 5, ch - 120, 10, 120);
+        playerA.draw(); playerB.draw(); shuttlecock.draw();
+    }
+
+    // --- Game Loop ---
+    function loop() {
+        if (gameState === 'SERVING_A') {
+            shuttlecock.pos.x = playerA.pos.x + playerA.w + 10;
+            shuttlecock.pos.y = playerA.pos.y + 15;
+        } else if (gameState === 'PLAYING') {
+            if (keys['ArrowLeft'] || keys['btnLeft']) playerA.vel.x = -playerSpeed; else if (keys['ArrowRight'] || keys['btnRight']) playerA.vel.x = playerSpeed; else playerA.vel.x = 0;
+            if ((keys['ArrowUp'] || keys['btnUp']) && playerA.pos.y + playerA.h === floorY) playerA.vel.y = playerJumpForce;
+            runAI(); playerA.update(); playerB.update(); shuttlecock.update(); checkCollision();
+        } else if (gameState === 'A_WINS') { celebrateWinner(playerA); } else if (gameState === 'B_WINS') { celebrateWinner(playerB); }
+        draw(); requestAnimationFrame(loop);
+    }
+
+    // --- Input Handling (PC + Mobile) ---
+    window.addEventListener('keydown', e => { keys[e.key] = true; if (e.key === ' ' && gameState === 'SERVING_A') serve(); });
+    window.addEventListener('keyup', e => keys[e.key] = false);
+    const btns = ['btnLeft', 'btnUp', 'btnRight', 'btnHit'].forEach(id => {
+        const btn = document.getElementById(id);
+        btn.addEventListener('touchstart', e => { e.preventDefault(); keys[id] = true; if (id === 'btnHit' && gameState === 'SERVING_A') serve(); if (id === 'btnHit' && gameState === 'PLAYING') keys[' '] = true; });
+        btn.addEventListener('touchend', e => { e.preventDefault(); keys[id] = false; if (id === 'btnHit' && gameState === 'PLAYING') keys[' '] = false; });
+    });
+
+    initGame(); loop();
+</script>
 </body>
 </html>
